@@ -7,10 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  expenses Expense[]
+}
+
 model Expense {
-  id      Int      @id @default(autoincrement())
-  date    DateTime
-  title   String
-  amount  Decimal
-  created DateTime  @default(now())
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  title      String
+  amount     Decimal
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
 }
