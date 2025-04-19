@@ -1,34 +1,28 @@
 import { useState, useEffect } from "react";
+import "./index.css";                 // Tailwind or your own styles
 
 function ExpenseForm({ onAdd }) {
-  const [form, setForm] = useState({
-    date: "",
-    title: "",
-    amount: ""
-  });
+  const [form, setForm] = useState({ date: "", title: "", amount: "" });
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-  }
+  const handle = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  async function handleSubmit(e) {
+  async function submit(e) {
     e.preventDefault();
     const res = await fetch("/api/expenses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
+      body: JSON.stringify(form),
     });
-    const data = await res.json();
-    onAdd(data);            // update parent list
+    onAdd(await res.json());
     setForm({ date: "", title: "", amount: "" });
   }
 
   return (
-    <form className="flex gap-2 flex-wrap" onSubmit={handleSubmit}>
-      <input name="date" type="date" value={form.date} onChange={handleChange} required />
-      <input name="title" placeholder="Title" value={form.title} onChange={handleChange} required />
-      <input name="amount" type="number" step="0.01" value={form.amount} onChange={handleChange} required />
+    <form onSubmit={submit} className="flex gap-2 flex-wrap">
+      <input name="date" type="date" value={form.date} onChange={handle} required />
+      <input name="title" placeholder="Title" value={form.title} onChange={handle} required />
+      <input name="amount" type="number" step="0.01" value={form.amount} onChange={handle} required />
       <button className="bg-blue-600 text-white px-3">Add</button>
     </form>
   );
@@ -37,12 +31,10 @@ function ExpenseForm({ onAdd }) {
 export default function App() {
   const [expenses, setExpenses] = useState([]);
 
-  // initial fetch
   useEffect(() => {
-    (async () => {
-      const res = await fetch("/api/expenses");
-      setExpenses(await res.json());
-    })();
+    fetch("/api/expenses")
+      .then((r) => r.json())
+      .then(setExpenses);
   }, []);
 
   return (
@@ -56,11 +48,11 @@ export default function App() {
             <tr><th>Date</th><th>Title</th><th className="text-right">Amount</th></tr>
           </thead>
           <tbody>
-            {expenses.map(e => (
+            {expenses.map((e) => (
               <tr key={e.id} className="border-b">
-                <td>{e.date}</td>
+                <td>{e.date.slice(0, 10)}</td>
                 <td>{e.title}</td>
-                <td className="text-right">${e.amount.toFixed(2)}</td>
+                <td className="text-right">${Number(e.amount).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -69,7 +61,7 @@ export default function App() {
 
       <section>
         <h2 className="text-xl mb-2">Add Expense</h2>
-        <ExpenseForm onAdd={exp => setExpenses(exps => [...exps, exp])} />
+        <ExpenseForm onAdd={(exp) => setExpenses((exps) => [...exps, exp])} />
       </section>
     </main>
   );

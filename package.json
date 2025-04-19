@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "scripts": {
+    "dev": "concurrently -k \"npm:start:api\" \"npm:start:react\"",
+    "start:api": "npm --prefix server run dev",
+    "start:react": "npm --prefix client run dev"
+  }  
+}
