@@ -1,0 +1,31 @@
+/* src/pages/Dashboard.css */
+.dashboard {
+    margin-top: 4rem;
+    padding: 2rem;
+    display: grid;
+    gap: 1rem;
+  }
+  
+  .widget {
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .total-expense {
+    background: linear-gradient(to right, #4f46e5, #3b82f6);
+    color: white;
+    font-size: 1.5rem;
+  }
+  
+  .category-widgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  
+  .category {
+    background-color: #f3f4f6;
+    font-size: 1rem;
+  }
+  
