@@ -31,36 +31,61 @@ app.get("/api/expenses", async (req, res) => {
   }
 });
 
-app.post("/api/expenses", async (req, res) => {
-  console.log("Request body:", req.body); // Log the incoming request body
+app.post("/api/expenses/bulk-save", async (req, res) => {
+  const { expenses, deletedRows } = req.body;
+
   try {
-    const { date, title, amount, categoryId } = req.body;
-
-    // Convert categoryId to an integer
-    const categoryIdInt = parseInt(categoryId, 10);
-
-    // Check if the category exists
-    const category = await prisma.category.findUnique({ where: { id: categoryIdInt } });
-    if (!category) {
-      console.error("Invalid categoryId:", categoryIdInt); // Log invalid categoryId
-      return res.status(400).json({ error: "Invalid categoryId" });
+    // Delete rows from the database
+    if (deletedRows && deletedRows.length > 0) {
+      await prisma.expense.deleteMany({
+        where: {
+          id: { in: deletedRows },
+        },
+      });
     }
 
-    // Convert date to a valid JavaScript Date object
-    const dateObj = new Date(date);
-    if (isNaN(dateObj.getTime())) {
-      console.error("Invalid date:", date); // Log invalid date
-      return res.status(400).json({ error: "Invalid date format. Expected YYYY-MM-DD." });
-    }
+    // Save or update expenses
+    const savedExpenses = await Promise.all(
+      expenses.map(async (expense) => {
+        const dateObj = new Date(expense.date);
+        if (isNaN(dateObj.getTime())) {
+          throw new Error(`Invalid date: ${expense.date}`);
+        }
 
-    const expense = await prisma.expense.create({
-      data: { date: dateObj, title, amount: parseFloat(amount), categoryId: categoryIdInt },
-    });
-    console.log("Created expense:", expense); // Log the created expense
-    res.status(201).json(expense);
+        const categoryId = parseInt(expense.categoryId, 10);
+        if (isNaN(categoryId)) {
+          throw new Error(`Invalid categoryId for expense: ${expense.title || "Untitled"}`);
+        }
+
+        if (!expense.id || expense.id.toString().length > 10) {
+          // New expense
+          return prisma.expense.create({
+            data: {
+              date: dateObj,
+              title: expense.title,
+              amount: parseFloat(expense.amount),
+              categoryId,
+            },
+          });
+        } else {
+          // Existing expense
+          return prisma.expense.update({
+            where: { id: parseInt(expense.id, 10) },
+            data: {
+              date: dateObj,
+              title: expense.title,
+              amount: parseFloat(expense.amount),
+              categoryId,
+            },
+          });
+        }
+      })
+    );
+
+    res.json(savedExpenses);
   } catch (error) {
-    console.error("Error creating expense:", error.stack); // Log the full error stack trace
-    res.status(500).json({ error: "Failed to create expense" });
+    console.error("Error saving expenses:", error.message);
+    res.status(400).json({ error: error.message });
   }
 });
 

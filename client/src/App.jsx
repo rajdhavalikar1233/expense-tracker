@@ -1,97 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "./index.css";
 
-function ExpenseForm({ onAdd, onUpdate, categories, form, setForm, selectedYear, selectedMonth }) {
-  const handle = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-
-  async function submit(e) {
-    e.preventDefault();
-
-    // Construct the full date using the selected year, month, and day
-    const fullDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(
-      form.day
-    ).padStart(2, "0")}`;
-
-    if (form.id) {
-      // Update existing expense
-      const res = await fetch(`/api/expenses/${form.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, date: fullDate }),
-      });
-      const updatedExpense = await res.json();
-      onUpdate(updatedExpense);
-    } else {
-      // Add new expense
-      const res = await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, date: fullDate }),
-      });
-      onAdd(await res.json());
-    }
-
-    setForm({ date: "", title: "", amount: "", categoryId: "", day: "" });
-  }
-
-  // Generate the days for the selected month and year
-  const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  return (
-    <form onSubmit={submit} className="flex gap-2 flex-wrap">
-      <select
-        name="day"
-        value={form.day || ""}
-        onChange={handle}
-        required
-        className="border px-2 py-1"
-      >
-        <option value="">Select Day</option>
-        {days.map((day) => (
-          <option key={day} value={day}>
-            {day}
-          </option>
-        ))}
-      </select>
-
-      <input name="title" placeholder="Title" value={form.title} onChange={handle} required />
-      <input name="amount" type="number" step="0.01" value={form.amount} onChange={handle} required />
-
-      <select
-        name="categoryId"
-        value={form.categoryId}
-        onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-        required
-        className="border px-2 py-1"
-      >
-        <option value="">Select Category</option>
-        {categories.map((category) => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-
-      <button className="bg-blue-600 text-white px-3">
-        {form.id ? "Update" : "Add"}
-      </button>
-    </form>
-  );
-}
-
 export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [form, setForm] = useState({ date: "", title: "", amount: "", categoryId: "", day: "" });
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [deletedRows, setDeletedRows] = useState([]); // Track deleted rows
 
   useEffect(() => {
-    fetch("/api/expenses")
-      .then((r) => r.json())
-      .then((data) => setExpenses(data));
+    fetchExpenses();
   }, []);
 
   useEffect(() => {
@@ -100,121 +18,280 @@ export default function App() {
       .then((data) => setCategories(data));
   }, []);
 
-  const handleAdd = (newExpense) => {
-    setExpenses((exps) => [...exps, newExpense]);
-  };
+  const fetchExpenses = async () => {
+    try {
+      const data = await fetch("/api/expenses").then((r) => r.json());
 
-  const handleUpdate = (updatedExpense) => {
-    setExpenses((exps) =>
-      exps.map((e) => (e.id === updatedExpense.id ? updatedExpense : e))
-    );
-  };
+      // Transform the API response to match the frontend's expected structure
+      const transformedData = data.map((expense) => {
+        const date = new Date(expense.date);
+        return {
+          id: expense.id,
+          day: date.getDate(), // Extract the day from the date
+          title: expense.title,
+          amount: expense.amount,
+          categoryId: expense.categoryId,
+          year: date.getFullYear(), // Extract the year
+          month: date.getMonth() + 1, // Extract the month (0-based index, so add 1)
+        };
+      });
 
-  const handleEdit = (expense) => {
-    const expenseDate = new Date(expense.date);
-    setForm({
-      id: expense.id,
-      day: expenseDate.getDate(),
-      title: expense.title,
-      amount: expense.amount,
-      categoryId: expense.categoryId,
-    });
-  };
-
-  const handleDelete = async (id) => {
-    if (confirm("Are you sure you want to delete this expense?")) {
-      await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-      setExpenses((exps) => exps.filter((e) => e.id !== id));
+      setExpenses(transformedData); // Update the state with the transformed data
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      alert("Failed to fetch expenses. Please try again.");
     }
   };
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const expenseDate = new Date(expense.date);
-    return (
-      expenseDate.getFullYear() === selectedYear &&
-      expenseDate.getMonth() + 1 === selectedMonth
+  const handleAddRow = () => {
+    const newRow = {
+      id: Date.now(), // Temporary ID for new rows
+      day: "",
+      title: "",
+      amount: "",
+      categoryId: "",
+      year: selectedYear,
+      month: selectedMonth,
+    };
+    setExpenses((prev) => [...prev, newRow]);
+  };
+
+  const handleDeleteRow = (id) => {
+    setExpenses((prev) => prev.filter((expense) => expense.id !== id));
+    if (id.toString().length <= 10) {
+      // Only add IDs that exist in the database
+      setDeletedRows((prev) => [...prev, id]);
+    }
+  };
+
+  const handleEditCell = (id, field, value) => {
+    setExpenses((prev) =>
+      prev.map((expense) =>
+        expense.id === id ? { ...expense, [field]: value } : expense
+      )
     );
-  });
+  };
+
+  const handleSave = async () => {
+    try {
+      const expensesWithFullDate = expenses.map((expense) => {
+        const day = expense.day || "01"; // Default to the 1st day if day is missing
+        const fullDate = `${expense.year || selectedYear}-${String(expense.month || selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+        const categoryId = parseInt(expense.categoryId, 10);
+        if (isNaN(categoryId)) {
+          throw new Error(`Invalid categoryId for expense: ${expense.title || "Untitled"}`);
+        }
+
+        return { ...expense, date: fullDate, categoryId };
+      });
+
+      const res = await fetch("/api/expenses/bulk-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expenses: expensesWithFullDate, deletedRows }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save expenses");
+      }
+
+      // Fetch the updated data from the database
+      await fetchExpenses();
+      setDeletedRows([]); // Clear the deleted rows after successful save
+      alert("Expenses saved successfully!");
+    } catch (error) {
+      console.error("Error saving expenses:", error);
+      alert(error.message || "Failed to save expenses. Please try again.");
+    }
+  };
+
+  const filteredExpenses = expenses.filter(
+    (expense) => expense.year === selectedYear && expense.month === selectedMonth
+  );
 
   return (
-    <main className="p-4 max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Expense Tracker</h1>
+    <main className="flex flex-col items-center bg-gray-100 min-h-screen p-4">
+      {/* Black Box with Dropdowns */}
+      <div className="bg-black text-white p-4 w-full max-w-4xl rounded-md sticky top-0 z-10">
+        <div className="flex gap-4 w-full">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="border px-2 py-1 bg-white text-black w-full"
+          >
+            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
 
-      <section className="flex gap-4 mb-4">
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="border px-2 py-1"
-        >
-          {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            className="border px-2 py-1 bg-white text-black w-full"
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+              <option key={month} value={month}>
+                {new Date(0, month - 1).toLocaleString("default", { month: "long" })}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(Number(e.target.value))}
-          className="border px-2 py-1"
-        >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-            <option key={month} value={month}>
-              {new Date(0, month - 1).toLocaleString("default", { month: "long" })}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      <section>
-        <h2 className="text-xl mb-2">My Expenses</h2>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100">
+      {/* Scrollable Table */}
+      <div className="overflow-auto w-full max-w-4xl mt-4 bg-white rounded-md shadow-md">
+        <table className="table-auto w-full text-sm">
+          <thead className="bg-gray-200 sticky top-0">
             <tr>
-              <th>Date</th>
-              <th>Title</th>
-              <th className="text-right">Amount</th>
-              <th>Actions</th>
+              <th className="border px-4 py-2">Day</th>
+              <th className="border px-4 py-2">Title</th>
+              <th className="border px-4 py-2">Amount</th>
+              <th className="border px-4 py-2">Category</th>
+              <th className="border px-4 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredExpenses.map((e) => (
-              <tr key={e.id} className="border-b">
-                <td>{e.date ? e.date.slice(0, 10) : "No Date"}</td>
-                <td>{e.title || "No Title"}</td>
-                <td className="text-right">${e.amount ? Number(e.amount).toFixed(2) : "0.00"}</td>
-                <td>
-                  <button
-                    className="text-blue-600 hover:underline"
-                    onClick={() => handleEdit(e)}
+            {filteredExpenses.length > 0 ? (
+              filteredExpenses.map((expense) => (
+                <tr key={expense.id}>
+                  {/* Editable Day */}
+                  <td className="border px-4 py-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={expense.day || ""}
+                      onChange={(e) => handleEditCell(expense.id, "day", e.target.value)}
+                      className="w-full border px-2 py-1"
+                    />
+                  </td>
+
+                  {/* Editable Title */}
+                  <td className="border px-4 py-2">
+                    <input
+                      type="text"
+                      value={expense.title || ""}
+                      onChange={(e) => handleEditCell(expense.id, "title", e.target.value)}
+                      className="w-full border px-2 py-1"
+                    />
+                  </td>
+
+                  {/* Editable Amount */}
+                  <td className="border px-4 py-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={expense.amount || ""}
+                      onChange={(e) => handleEditCell(expense.id, "amount", e.target.value)}
+                      className="w-full border px-2 py-1"
+                    />
+                  </td>
+
+                  {/* Editable Category */}
+                  <td className="border px-4 py-2">
+                    <select
+                      value={expense.categoryId || ""}
+                      onChange={(e) => handleEditCell(expense.id, "categoryId", e.target.value)}
+                      className="w-full border px-2 py-1"
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* Delete Button */}
+                  <td className="border px-4 py-2 text-center">
+                    <button
+                      onClick={() => handleDeleteRow(expense.id)}
+                      className="minus-button"
+                    >
+                      -
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                {/* Default Empty Row */}
+                <td className="border px-4 py-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value=""
+                    onChange={(e) => handleAddRow()}
+                    className="w-full border px-2 py-1"
+                  />
+                </td>
+                <td className="border px-4 py-2">
+                  <input
+                    type="text"
+                    value=""
+                    onChange={(e) => handleAddRow()}
+                    className="w-full border px-2 py-1"
+                  />
+                </td>
+                <td className="border px-4 py-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value=""
+                    onChange={(e) => handleAddRow()}
+                    className="w-full border px-2 py-1"
+                  />
+                </td>
+                <td className="border px-4 py-2">
+                  <select
+                    value=""
+                    onChange={(e) => handleAddRow()}
+                    className="w-full border px-2 py-1"
                   >
-                    Edit
-                  </button>
+                    <option value="">Select Category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="border px-4 py-2 text-center">
                   <button
-                    className="text-red-600 hover:underline ml-2"
-                    onClick={() => handleDelete(e.id)}
+                    onClick={() => handleAddRow()}
+                    className="minus-button"
                   >
-                    Delete
+                    -
                   </button>
                 </td>
               </tr>
-            ))}
+            )}
+
+            {/* Add Row and Save Buttons */}
+            <tr>
+              <td colSpan="5" className="border px-4 py-2 text-center flex gap-4 justify-center">
+                <button
+                  onClick={handleAddRow}
+                  className="plus-button"
+                >
+                  +
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="save-button"
+                >
+                  Save
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
-      </section>
-
-      <section>
-        <h2 className="text-xl mb-2">{form.id ? "Edit Expense" : "Add Expense"}</h2>
-        <ExpenseForm
-          onAdd={handleAdd}
-          onUpdate={handleUpdate}
-          categories={categories}
-          form={form}
-          setForm={setForm}
-          selectedYear={selectedYear}
-          selectedMonth={selectedMonth}
-        />
-      </section>
+      </div>
     </main>
   );
 }

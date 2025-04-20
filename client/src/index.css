@@ -25,9 +25,11 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: center; /* Center elements horizontally */
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f9f9f9;
 }
 
 h1 {
@@ -54,15 +56,106 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+}
+
+th {
+  background-color: #f3f3f3;
+  font-weight: bold;
+}
+
+input, select {
+  outline: none;
+  border: 1px solid #ccc;
+  padding: 0.5em;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.black-box {
+  background-color: #000;
+  color: #fff;
+  padding: 1em;
+  border-radius: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  width: 100%;
+  max-width: 800px;
+}
+
+.scrollable-table {
+  overflow-y: auto;
+  max-height: 400px;
+  margin-top: 1em;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Updated Plus Button */
+.plus-button {
+  background-color: transparent;
+  color: #007bff;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.plus-button:hover {
+  background-color: #007bff;
+  color: #fff;
+}
+
+/* Updated Minus Button */
+.minus-button {
+  background-color: transparent;
+  color: #e3342f;
+  border: 1px solid #e3342f;
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.minus-button:hover {
+  background-color: #e3342f;
+  color: #fff;
+}
+
+/* Save Button */
+.save-button {
+  background-color: transparent;
+  color: #28a745;
+  border: 1px solid #28a745;
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.save-button:hover {
+  background-color: #28a745;
+  color: #fff;
+}
+
+/* Ensure all elements start from the top */
+main {
+  display: flex;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: center; /* Center elements horizontally */
+  width: 100%; /* Full width */
+  min-height: 100vh; /* Full viewport height */
+  background-color: #f9f9f9; /* Light gray background */
+  padding: 0; /* Remove padding */
+  margin: 0; /* Remove margin */
 }
