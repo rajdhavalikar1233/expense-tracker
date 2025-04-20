@@ -64,6 +64,42 @@ app.post("/api/expenses", async (req, res) => {
   }
 });
 
+app.put("/api/expenses/:id", async (req, res) => {
+  const { id } = req.params;
+  const { date, title, amount, categoryId } = req.body;
+
+  try {
+    const updatedExpense = await prisma.expense.update({
+      where: { id: parseInt(id, 10) },
+      data: {
+        date: new Date(date),
+        title,
+        amount: parseFloat(amount),
+        categoryId: parseInt(categoryId, 10),
+      },
+    });
+    res.json(updatedExpense);
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    res.status(500).json({ error: "Failed to update expense" });
+  }
+});
+
+// Delete an expense
+app.delete("/api/expenses/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.expense.delete({
+      where: { id: parseInt(id, 10) },
+    });
+    res.status(204).send(); // No content
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    res.status(500).json({ error: "Failed to delete expense" });
+  }
+});
+
 app.get("/api/reports/monthly", async (_req, res) => {
   const data = await prisma.$queryRaw`
     SELECT DATE_TRUNC('month', date) AS month, SUM(amount) AS total
