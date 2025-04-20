@@ -1,23 +1,42 @@
-// src/components/Navbar.jsx
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu } from 'lucide-react'; // or use "⋯" if you don't want to install an icon lib
-import './Navbar.css';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import "./Navbar.css"; // Optional: you can skip this if styling inline
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="navbar">
-      <div className="nav-left">
-        <button onClick={() => setIsOpen(!isOpen)} className="menu-button">
-          <Menu size={24} />
-        </button>
-        <div className={`nav-links ${isOpen ? 'open' : ''}`}>
-          <Link to="/dashboard">Dashboard</Link>
-          <Link to="/expenses">Expenses</Link>
+    <nav style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      background: "#1f2937",
+      color: "white",
+      padding: "0.75rem 1rem",
+      display: "flex",
+      alignItems: "center",
+      zIndex: 1000
+    }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          background: "none",
+          border: "none",
+          color: "white",
+          fontSize: "1.5rem",
+          cursor: "pointer",
+        }}
+      >
+        ⋯
+      </button>
+
+      {isOpen && (
+        <div style={{ marginLeft: "1rem", display: "flex", gap: "1rem" }}>
+          <Link to="/dashboard" style={{ color: "white", textDecoration: "none" }}>Dashboard</Link>
+          <Link to="/" style={{ color: "white", textDecoration: "none" }}>Home</Link>
         </div>
-      </div>
+      )}
     </nav>
   );
 };
